@@ -5,7 +5,6 @@ import ndspy.rom
 import ndspy.fnt
 import ndspy.color
 import ndspy.graphics2D
-#import ndspy.extras.textureEncoding
 import threading
 from enum import Enum 
 from enum import IntEnum
@@ -13,6 +12,7 @@ from enum import IntEnum
 from PyQt5 import Qt, QtCore, QtGui, QtWidgets
 from ndspy import Processor
 from PIL import Image
+from PIL.ImageQt import ImageQt
 
 class NodeTypes(Enum):
     rom = 1
@@ -71,7 +71,7 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
         self.extractButton = QtWidgets.QPushButton('Extract...', self)
         self.extractButton.clicked.connect(self.HandleExtract)
 
-        self.openButton = QtWidgets.QPushButton('Open...', self)
+        #self.openButton = QtWidgets.QPushButton('Open...', self)
 
         self.renameButton = QtWidgets.QPushButton('Rename...', self)
         self.renameButton.clicked.connect(self.HandleRename)
@@ -105,8 +105,8 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
         detailsLayout.addWidget(self.selectedFileDetails, 2, 1)
 
         buttonsLayout = QtWidgets.QGridLayout() 
-        buttonsLayout.addWidget(self.openButton, 1, 1)
-        buttonsLayout.addWidget(self.extractButton, 1, 2)
+        #buttonsLayout.addWidget(self.openButton, 1, 1)
+        buttonsLayout.addWidget(self.extractButton, 1, 1)
         buttonsLayout.addWidget(self.replaceButton, 1, 3)
         buttonsLayout.addWidget(self.renameButton, 2, 1)
         buttonsLayout.addWidget(self.addButton, 2, 2)
@@ -134,12 +134,12 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
 
         self.extractIconButton = QtWidgets.QPushButton('Extract icon...', self)
         self.extractIconButton.clicked.connect(self.HandleExtractIcon)
-        self.importIconButton = QtWidgets.QPushButton('Import icon...', self)
-        self.importIconButton.clicked.connect(self.HandleImportIcon)
+        #self.importIconButton = QtWidgets.QPushButton('Import icon...', self)
+        #self.importIconButton.clicked.connect(self.HandleImportIcon)
 
         tab2Layout.addWidget(self.bannerIconLabel, 0, 0)
         iconbuttonlayout.addWidget(self.extractIconButton, 0, 0)
-        iconbuttonlayout.addWidget(self.importIconButton, 1, 0)
+        #iconbuttonlayout.addWidget(self.importIconButton, 1, 0)
 
         self.lJapanese = QtWidgets.QLabel('Japanese:',self)
         self.lEnglish = QtWidgets.QLabel('English:',self)
@@ -148,12 +148,12 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
         self.lItalian = QtWidgets.QLabel('Italian:',self)
         self.lSpanish = QtWidgets.QLabel('Spanish:',self)
 
-        self.tJapanese = QtWidgets.QTextEdit()
-        self.tEnglish = QtWidgets.QTextEdit()
-        self.tFrench = QtWidgets.QTextEdit()
-        self.tGerman = QtWidgets.QTextEdit()
-        self.tItalian = QtWidgets.QTextEdit()
-        self.tSpanish = QtWidgets.QTextEdit()
+        self.tJapanese = QtWidgets.QTextEdit(readOnly=True)
+        self.tEnglish = QtWidgets.QTextEdit(readOnly=True)
+        self.tFrench = QtWidgets.QTextEdit(readOnly=True)
+        self.tGerman = QtWidgets.QTextEdit(readOnly=True)
+        self.tItalian = QtWidgets.QTextEdit(readOnly=True)
+        self.tSpanish = QtWidgets.QTextEdit(readOnly=True)
 
         tab2Layout.addWidget(self.lJapanese, 1, 0)
         tab2Layout.addWidget(self.lEnglish, 2, 0)
@@ -181,8 +181,7 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
 
     def LoadBannerAndTitles(self):
         (_version, _CRC16, _CRC16_2, _CRC16_3, _CRC16_4, _reserved, 
-        iconBitmap, iconPalette,
-        japanese, english, french, german, italian, spanish) = struct.unpack_from('<5h22s512s32s256s256s256s256s256s256s', self.ROM.iconBanner, 0)
+        iconBitmap, iconPalette, japanese, english, french, german, italian, spanish) = struct.unpack_from('<5h22s512s32s256s256s256s256s256s256s', self.ROM.iconBanner, 0)
 
         self.tJapanese.setText(str(japanese, 'utf-8'))
         self.tEnglish.setText(str(english, 'utf-8'))
@@ -191,23 +190,16 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
         self.tItalian.setText(str(italian, 'utf-8'))
         self.tSpanish.setText(str(spanish, 'utf-8'))
 
-        #colorInts = struct.unpack('<%dh' % 16, iconPalette)
-        #colors = []
+        colorInts = struct.unpack('<%dh' % 16, iconPalette)
+        colors = []
 
-        #for i in range(len(iconPalette) // 2):
-        #    tup = ndspy.color.unpack255(colorInts[i])
-
-        #    if (i == 0):
-        #        colors.append((tup[0], tup[1], tup[2], 0))
-        #    else:
-        #        colors.append((tup[0], tup[1], tup[2], 255))
-
-        #tiles = ndspy.graphics2D.loadImageTiles(iconBitmap, 4)
-        #data = ndspy.graphics2D.renderImageTiles(tiles, colors, 0, 4).convert('RGBA').tobytes('raw', 'RGBA')
-        #self.bannerIcon = QtGui.QImage(data, 32, 32, QtGui.QImage.Format_RGBA8888)
-        #self.bannerIconLabel.setPixmap(QtGui.QPixmap.fromImage(self.bannerIcon).scaled(64,64))
-
-
+        for i in range(len(iconPalette) // 2):
+            colors.append(ndspy.color.convert(colorInts[i], ndspy.color.ColorFormat.INT_16, ndspy.color.ColorFormat.TUPLE_RGB5A1))
+        
+        tiles = ndspy.graphics2D.loadImageTiles(iconBitmap, ndspy.graphics2D.ImageFormat.I4)
+        self.bannerIcon = ImageQt(ndspy.graphics2D.renderImageTilesAsImage(tiles, colors, 0, 4))
+        self.bannerIconLabel.setPixmap(QtGui.QPixmap.fromImage(self.bannerIcon).scaled(64,64))
+        
     def LoadROM(self, fileName):
         self.SetProgressText('Loading the ROM...')
         self.ROM = ndspy.rom.NintendoDSRom.fromFile(fileName)
@@ -248,7 +240,6 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
 
 
     def Save(self):
-        print(len(self.ROM.files))
         self.ROM.saveToFile(self.romFileName)
         self.romEdited = False
 
@@ -796,7 +787,7 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
         if nodeType in {NodeTypes.directory, NodeTypes.file}:
   
             name = self.currentNode.text(0)
-            newName, ok = QtWidgets.QInputDialog.getText(self, '', 'Enter a new name for this ' + 'file' if nodeType == NodeTypes.file else 'folder' + ':')
+            newName, ok = QtWidgets.QInputDialog.getText(self, 'Rename', 'Enter a new name for this ' + 'file' if nodeType == NodeTypes.file else 'folder' + ':', text=name)
             
             if ok:
                 parentFolderPath = self.currentNode.data(NodeData.path, QtCore.Qt.UserRole)
@@ -926,7 +917,7 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
             if nodeType == NodeTypes.file:
                 parentFolderPath = self.currentNode.data(NodeData.path, QtCore.Qt.UserRole)
                 folder = self.ROM.filenames if parentFolderPath == '' else self.ROM.filenames.subfolder(parentFolderPath)
-
+                
                 for fn in folder.files:
                     if newName == fn:
                         QtWidgets.QMessageBox.information(self, 'Error', 'A file with this name already exists in this folder.')
@@ -936,7 +927,6 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
                     if fn == fileName:
                         folder.files.insert(i + 1, newName)
                         self.ROM.files.insert(fileId + 1, b'')
-                        break
             else:
                 parentFolderPath = self.currentNode.data(NodeData.path, QtCore.Qt.UserRole)
 
@@ -1027,11 +1017,11 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
 
             if nodeType == NodeTypes.file:
                 parentNodeType = self.currentNode.data(0, QtCore.Qt.UserRole)
-
+                
                 if parentNodeType == NodeTypes.filesystem:
                     fileNode.setData(NodeData.path, QtCore.Qt.UserRole, '')
                 else:
-                    fileNode.setData(NodeData.path, QtCore.Qt.UserRole, parentFolderPath + '/' + self.currentNode.parent().text(0))
+                    fileNode.setData(NodeData.path, QtCore.Qt.UserRole, parentFolderPath)
                     
                 self.currentNode.parent().insertChild(self.currentNode.parent().indexOfChild(self.currentNode) + 1, fileNode)
             else:
@@ -1095,7 +1085,7 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
             if parentNodeType == NodeTypes.filesystem:
                 folderNode.setData(NodeData.path, QtCore.Qt.UserRole, '')
             else:
-                folderNode.setData(NodeData.path, QtCore.Qt.UserRole, parentFolderPath + '/' + self.currentNode.parent().text(0))
+                folderNode.setData(NodeData.path, QtCore.Qt.UserRole, parentFolderPath)
 
             self.currentNode.parent().addChild(folderNode)
 
@@ -1153,7 +1143,7 @@ class FilesystemEditorWidget(QtWidgets.QWidget):
             if fileName == '': return
             else:
                 image = Image.open(fileName)
-                tex, _none, _pal = ndspy.extras.textureEncoding.encodeImage_Paletted_4BPP(image)
+                tex, _none, _pal = textureEncoding.encodeImage_Paletted_4BPP(image)
 
                 outdata = bytearray()
                 for y in range(4):
