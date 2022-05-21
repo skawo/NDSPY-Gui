@@ -58,7 +58,6 @@ class MainNDSPYWindow(QtWidgets.QMainWindow):
         self.romEditor.Save()
         
     def HandleAbout(self):
-        print('fuck')
         QtWidgets.QMessageBox.information(self, 'About', 'NDSPY-Gui 0.1 by Skawo.')
 
     def HandleSaveAs(self):
